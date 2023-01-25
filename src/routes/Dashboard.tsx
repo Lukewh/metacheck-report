@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { Link } from "react-router-dom";
 import { useRecoilValue } from "recoil";
 import { errorCodesState, rawDataState, tagCountState } from "../state";
 
@@ -12,10 +13,14 @@ export const Dashboard = () => {
       return [];
     }
     return [
-      [200, `${rawData.site}/`],
       ...rawData.pages
         .map((page): [number, string] => {
-          return [page.status, page.url];
+          let url = page.url;
+          // We need to ensure the root is clickable
+          if (url === rawData.site) {
+            url = `${url}/`;
+          }
+          return [page.status, url];
         })
         .sort((a, b) => a[1].localeCompare(b[1])),
     ];
@@ -75,9 +80,13 @@ export const Dashboard = () => {
                     {status}
                   </td>
                   <td>
-                    <a href={`/page/${encodeURIComponent(uri)}`}>
-                      {uri.split(rawData!.site)[1]}
-                    </a>
+                    {status === 200 ? (
+                      <Link to={`/page/${encodeURIComponent(uri)}`}>
+                        {`${uri.split(rawData!.site)[1]}`}
+                      </Link>
+                    ) : (
+                      `${uri.split(rawData!.site)[1]}`
+                    )}
                   </td>
                 </tr>
               ))}

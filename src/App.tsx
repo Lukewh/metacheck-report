@@ -13,8 +13,6 @@ type AppWindow = Window & typeof globalThis & { data: any };
 
 const _window = window as AppWindow;
 
-console.log(_window);
-
 function App() {
   const setData = useSetRecoilState(rawDataState);
 
