@@ -1,13 +1,15 @@
 import { useEffect } from "react";
 import { useSetRecoilState } from "recoil";
 import { Route, Routes } from "react-router-dom";
-import "./App.css";
 
 import type { IRawData } from "./types";
 
 import { rawDataState } from "./state";
 import { Dashboard } from "./routes/Dashboard";
 import { Page } from "./routes/Page";
+
+import { Layout } from "antd";
+const { Footer, Content } = Layout;
 
 type AppWindow = Window & typeof globalThis & { data: any };
 
@@ -30,10 +32,17 @@ function App() {
   }, [setData]);
 
   return (
-    <Routes>
-      <Route path="/" element={<Dashboard />} />
-      <Route path="/page/:encodedUri" element={<Page />} />
-    </Routes>
+    <Layout>
+      <Layout>
+        <Content style={{ padding: "2rem" }}>
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/page/:encodedUri" element={<Page />} />
+          </Routes>
+        </Content>
+        <Footer>Footer</Footer>
+      </Layout>
+    </Layout>
   );
 }
 

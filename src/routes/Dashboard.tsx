@@ -1,99 +1,177 @@
-import { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useRecoilValue } from "recoil";
-import { errorCodesState, rawDataState, tagCountState } from "../state";
+import { rawDataState } from "../state";
+import { IPage, IRawData } from "../types";
+
+import {
+  Alert,
+  Space,
+  Table,
+  Input,
+  Statistic,
+  Row,
+  Col,
+  Typography,
+} from "antd";
+import { CheckCircleTwoTone, CloseCircleTwoTone } from "@ant-design/icons";
+const { Search } = Input;
+const { Title } = Typography;
 
 export const Dashboard = () => {
-  const rawData = useRecoilValue(rawDataState);
-  const errorGroup = useRecoilValue(errorCodesState);
-  const tagCount = useRecoilValue(tagCountState);
+  const rawData = useRecoilValue(rawDataState) as IRawData;
+  const [filter, setFilter] = useState<string>();
 
-  const uris: [number, string][] = useMemo(() => {
+  const pages: IPage[] = useMemo(() => {
     if (!rawData) {
       return [];
     }
-    return [
-      ...rawData.pages
-        .map((page): [number, string] => {
-          let url = page.url;
-          // We need to ensure the root is clickable
-          if (url === rawData.site) {
-            url = `${url}/`;
+
+    return rawData.pages.filter(
+      (page) => !filter || (filter && page.url.includes(filter))
+    );
+  }, [rawData, filter]);
+
+  const columns = [
+    {
+      title: "",
+      dataIndex: "status",
+      key: "status",
+      render: (status: number) => {
+        return (
+          <>
+            {status === 200 && <CheckCircleTwoTone twoToneColor="#6D972E" />}
+            {status !== 200 && (
+              <CloseCircleTwoTone twoToneColor="#E45545" />
+            )}{" "}
+            {status}
+          </>
+        );
+      },
+    },
+    {
+      title: "Page",
+      dataIndex: "display",
+      key: "display",
+      render: (text: string, page: IPage) => (
+        <>
+          {page.status === 200 ? (
+            <Link to={`/page/${page.encodedURL}`}>{text}</Link>
+          ) : (
+            text
+          )}
+        </>
+      ),
+    },
+    {
+      title: "Score",
+      dataIndex: ["metadataAnalysis", "overall", "score"],
+      key: "score",
+      render: (percentage: number) => `${percentage.toFixed(0)}%`,
+    },
+  ];
+
+  const none200 = useMemo(() => pages?.filter((page) => page.status !== 200), [
+    pages,
+  ]);
+
+  const [lowThreshold, midThreshold, highThreshold] = useMemo(
+    () =>
+      pages?.reduce(
+        (acc, page) => {
+          const [low, mid, high] = acc;
+          const score = page.metadataAnalysis.overall.score;
+
+          if (page.status !== 200) {
+            return acc;
           }
-          return [page.status, url];
-        })
-        .sort((a, b) => a[1].localeCompare(b[1])),
-    ];
-  }, [rawData]);
+
+          if (score < 50) {
+            low.push(page);
+          } else if (score >= 50 && score < 75) {
+            mid.push(page);
+          } else {
+            high.push(page);
+          }
+
+          return acc;
+        },
+        [[], [], []] as [IPage[], IPage[], IPage[]]
+      ),
+    [pages]
+  );
 
   return (
     <div>
-      {errorGroup && (
-        <>
-          <h1>Status</h1>
-          {Object.keys(errorGroup).map((key) => {
-            return (
-              <div key={key}>
-                <b>{key}</b>: {errorGroup[key].length}
-              </div>
-            );
-          })}
-        </>
-      )}
-      {tagCount && (
-        <>
-          <h1>Tag count</h1>
-          {Object.keys(tagCount).map((key) => {
-            return (
-              <div key={key}>
-                <b>{key}</b>: {tagCount[key].length}
-              </div>
-            );
-          })}
-        </>
-      )}
-      {uris && (
-        <>
-          <h1>All pages ({uris.length})</h1>
-          <table>
-            <thead>
-              <tr>
-                <th></th>
-                <th>Page</th>
-              </tr>
-            </thead>
-            <tbody>
-              {uris.map(([status, uri]) => (
-                <tr key={uri}>
-                  <td>
-                    <span
-                      style={{
-                        display: "inline-block",
-                        width: "16px",
-                        height: "16px",
-                        borderRadius: "8px",
-                        backgroundColor: `${
-                          status === 200 ? "#6D972E" : "#E45545"
-                        }`,
-                      }}
-                    ></span>{" "}
-                    {status}
-                  </td>
-                  <td>
-                    {status === 200 ? (
-                      <Link to={`/page/${encodeURIComponent(uri)}`}>
-                        {`${uri.split(rawData!.site)[1]}`}
-                      </Link>
-                    ) : (
-                      `${uri.split(rawData!.site)[1]}`
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </>
-      )}
+      <Title>{rawData && rawData.site}</Title>
+      <Space direction="vertical" size="large" style={{ width: "100%" }}>
+        <Row gutter={16}>
+          {none200 && (
+            <Col span={6}>
+              <Alert
+                type="error"
+                description={
+                  <Statistic title="Bad links" value={none200.length} />
+                }
+              />
+            </Col>
+          )}
+          {lowThreshold && lowThreshold.length > 0 && (
+            <Col span={6}>
+              <Alert
+                type="error"
+                description={
+                  <Statistic
+                    title="Low metadata coverage"
+                    value={lowThreshold.length ?? 0}
+                  />
+                }
+              />
+            </Col>
+          )}
+          {midThreshold && midThreshold.length > 0 && (
+            <Col span={6}>
+              <Alert
+                type="warning"
+                description={
+                  <Statistic
+                    title="Medium metadata coverage"
+                    value={midThreshold.length ?? 0}
+                  />
+                }
+              />
+            </Col>
+          )}
+          {highThreshold && highThreshold.length > 0 && (
+            <Col span={6}>
+              <Alert
+                type="success"
+                description={
+                  <Statistic
+                    title="High metadata coverage"
+                    value={highThreshold.length ?? 0}
+                  />
+                }
+              />
+            </Col>
+          )}
+        </Row>
+        {pages && (
+          <>
+            <Search
+              placeholder="Search url"
+              onSearch={(str) => setFilter(str)}
+              allowClear
+              enterButton
+            />
+            <Table
+              dataSource={pages}
+              columns={columns}
+              pagination={{ defaultPageSize: 50 }}
+            />
+          </>
+        )}
+      </Space>
     </div>
   );
 };

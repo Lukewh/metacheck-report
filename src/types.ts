@@ -6,8 +6,30 @@ export interface IRawPage {
   metadata: any;
 }
 
+export interface IPage extends IRawPage {
+  display: string;
+  encodedURL: string;
+  metadataAnalysis: IAnalysedMetadata;
+}
+
 export interface IRawData {
   page_count: number;
   site: string;
-  pages: IRawPage[];
+  pages: IPage[];
+}
+
+export interface IAnalysedMetadatum {
+  score: number;
+  missing: string[];
+}
+
+export interface IAnalysedMetadata {
+  base: IAnalysedMetadatum;
+  simple: IAnalysedMetadatum;
+  og: IAnalysedMetadatum;
+  twitter: IAnalysedMetadatum;
+  overall: {
+    score: number;
+    missing: number;
+  };
 }
