@@ -2,11 +2,44 @@ import { useMemo } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useRecoilValue } from "recoil";
 import { rawDataState } from "../state";
+import { IRawData } from "../types";
+
+import { Button, Typography, Descriptions, Image } from "antd";
+import { CaretLeftOutlined } from "@ant-design/icons";
+
+const { Title } = Typography;
+
+const renderLink = (content: string) => {
+  if (content.startsWith("http")) {
+    return (
+      <a href={content} target="_blank">
+        {content}
+      </a>
+    );
+  }
+  return <>{content}</>;
+};
+
+const TextContent = ({ content }: { content: string }) => (
+  <>{renderLink(content)}</>
+);
+const ImageContent = ({ content }: { content: string }) => (
+  <Image width={200} src={content} />
+);
+const renderContent = (key: string, content: string) => {
+  switch (key) {
+    case "og:image":
+    case "twitter:image":
+      return <ImageContent content={content} />;
+    default:
+      return <TextContent content={content} />;
+  }
+};
 
 export const Page = () => {
   const { encodedUri } = useParams();
   const url = encodedUri ? decodeURIComponent(encodedUri) : null;
-  const rawData = useRecoilValue(rawDataState);
+  const rawData = useRecoilValue(rawDataState) as IRawData;
 
   const page = useMemo(() => {
     if (!rawData || !url) {
@@ -18,29 +51,29 @@ export const Page = () => {
 
   return (
     <div>
-      <Link to={"/"}>&lt; Back</Link>
+      <Link to={"/"}>
+        <Button icon={<CaretLeftOutlined />}>Back</Button>
+      </Link>
       {page && (
         <>
-          <h1>{page?.metadata?.title ?? page.url}</h1>
-          <h2>{page?.metadata?.title && page.url}</h2>
-          <h2>{page.status}</h2>
+          <Title>{page?.metadata?.title ?? page.url}</Title>
+          {page?.metadata?.title && (
+            <Title level={3}>
+              {page.url} ({page.status})
+            </Title>
+          )}
           {page.metadata && (
-            <table>
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Value</th>
-                </tr>
-              </thead>
-              <tbody>
-                {Object.keys(page.metadata).map((key) => (
-                  <tr key={key}>
-                    <td>{key}</td>
-                    <td>{page.metadata[key]}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <Descriptions
+              bordered
+              title="Base tags"
+              column={{ xxl: 4, xl: 3, lg: 2, md: 2, sm: 1, xs: 1 }}
+            >
+              {Object.keys(page.metadata).map((key) => (
+                <Descriptions.Item label={key} key={key}>
+                  {renderContent(key, page.metadata[key])}
+                </Descriptions.Item>
+              ))}
+            </Descriptions>
           )}
         </>
       )}
